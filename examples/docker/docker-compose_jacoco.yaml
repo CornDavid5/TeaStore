@@ -1,0 +1,73 @@
+version: '3'
+services:
+  jacoco:
+    image: ictu/jacoco-agent-docker:latest
+    volumes:
+      - jacoco:/jacoco:ro
+  registry:
+    image: descartesresearch/teastore-registry
+    expose:
+      - "8080"
+  db:
+    image: descartesresearch/teastore-db
+    expose:
+      - "3306"
+    ports:
+      - "3306:3306"
+  persistence:
+    image: descartesresearch/teastore-persistence
+    expose:
+      - "8080"
+    environment:
+      HOST_NAME: "persistence"
+      REGISTRY_HOST: "registry"
+      DB_HOST: "db"
+      DB_PORT: "3306"
+  auth:
+    image: teastore-auth:local
+    ports:
+      - "36300:6300"
+    expose:
+      - "8080"
+    volumes:
+      - jacoco:/jacoco:ro
+      - ./class-dump/auth:/class-dump
+    environment:
+      CATALINA_OPTS: "-javaagent:/jacoco/lib/jacocoagent.jar=includes=tools.descartes.teastore.*,output=tcpserver,port=6300,address=*,classdumpdir=/class-dump,append=false" 
+      HOST_NAME: "auth"
+      REGISTRY_HOST: "registry"
+    depends_on:
+      - jacoco
+  image:
+    image: descartesresearch/teastore-image
+    expose:
+      - "8080"
+    environment:
+      HOST_NAME: "image"
+      REGISTRY_HOST: "registry"
+  recommender:
+    image: descartesresearch/teastore-recommender
+    expose:
+      - "8080"
+    environment:
+      HOST_NAME: "recommender"
+      REGISTRY_HOST: "registry"
+  webui:
+    image: teastore-webui:local
+    expose:
+      - "8080"
+    volumes:
+      - jacoco:/jacoco:ro       
+      - ./class-dump/webui:/class-dump
+    environment:
+      CATALINA_OPTS: "-javaagent:/jacoco/lib/jacocoagent.jar=includes=tools.descartes.teastore.*,output=tcpserver,port=6300,address=*,classdumpdir=/class-dump,append=false" 
+      HOST_NAME: "webui"
+      REGISTRY_HOST: "registry"
+    ports:
+      - "36301:6300"
+      - "8080:8080"
+    depends_on:
+      - jacoco
+
+volumes:
+  jacoco:     
